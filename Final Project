@@ -1,0 +1,416 @@
+#include <iostream>
+#include <vector>
+#include <time.h>
+#include <SFML/Window.hpp>
+#include <SFML/Graphics.hpp>
+using namespace std;
+
+class Character : public sf::Sprite
+{
+public:
+    bool ground = false;
+    float x = 0.0;
+    int health = 3;
+    Character()
+    {
+
+    }
+};
+
+class Platforma : public sf::RectangleShape
+{
+public:
+    float speed;
+    Platforma()
+    {
+        setSize({100,15});
+        setPosition(rand()%531,0);
+        speed=rand()%4+1;
+        int n;
+        n = rand() % 2;
+        if (n == 0) setFillColor(sf::Color::Yellow);
+        else setFillColor(sf::Color::Blue);
+    }
+
+    void intersectWithWall(Character &championSprite)
+    {
+
+        if(getGlobalBounds().intersects(championSprite.getGlobalBounds()))
+        {
+            speed = 0;
+            if(championSprite.getPosition().x < getPosition().x)
+            {
+                if (championSprite.getPosition().y+championSprite.getGlobalBounds().height-10 > getPosition().y) championSprite.move(0,-1);
+            }
+            else if(championSprite.getPosition().x>getPosition().x)
+            {
+                if (championSprite.getPosition().y+championSprite.getGlobalBounds().height-10 > getPosition().y) championSprite.move(0,-1);
+            }
+            if(championSprite.getPosition().y<getPosition().y)
+            {
+                if (championSprite.getPosition().y+championSprite.getGlobalBounds().height-10 > getPosition().y) championSprite.move(0,-1);
+                championSprite.ground = true;
+                championSprite.x = 0;
+            }
+        }
+        else
+        {
+            if (speed == 0) speed = rand() % 4+1;
+        }
+    }
+
+    void moveWall()
+    {
+           if(getPosition().x < 0 && speed <= 0)
+           {
+               speed = speed * (-1);
+           }
+           if(getPosition().x > 520  && speed >= 0)
+           {
+                speed = speed * (-1);
+           }
+           move(speed, 0);
+    }
+
+    void respawn()
+    {
+        if (getPosition().y >= 800)
+        {
+            move(0, -800);
+        }
+    }
+
+
+};
+
+
+
+class Screen
+{
+public:
+    bool active = false;
+};
+
+class MainMenu : public Screen
+{
+public:
+    sf::RectangleShape button1;
+    sf::Text button1Text;
+    sf::RectangleShape button2;
+    sf::Text button2Text;
+    sf::Font font;
+    sf::Sprite main_back;
+    sf::Texture main_back1;
+    MainMenu()
+    {
+        button1.setSize({150,75});
+        button1.setPosition(230, 300);
+
+        button2.setSize({150,75});
+        button2.setPosition(230, 400);
+
+        font.loadFromFile("comic.ttf");
+        button1Text.setFont(font);
+        button1Text.setCharacterSize(30);
+        button1Text.setFillColor(sf::Color::Black);
+        button1Text.setString("START");
+        button1Text.setPosition(235, 305);
+
+        button2Text.setFont(font);
+        button2Text.setCharacterSize(30);
+        button2Text.setFillColor(sf::Color::Black);
+        button2Text.setString("END");
+        button2Text.setPosition(235, 405);
+        main_back.setPosition(0, 0);
+         main_back1.loadFromFile("back_day.png");
+        main_back.setTexture(main_back1);
+    }
+
+    void drawScreen(sf::RenderWindow &window)
+    {
+        window.draw(main_back);
+        window.draw(button1);
+        window.draw(button1Text);
+        window.draw(button2);
+        window.draw(button2Text);
+
+    }
+};
+
+class GameScreen : public Screen
+{
+public:
+    Character championSprite;
+    sf::Texture championTexture;
+    sf::Sprite backgroungSprite;
+    sf::Texture textureBackground;
+    vector<Platforma> wall;
+    sf::Texture wallTexture;
+    Platforma floor;
+    int point = 0;
+    sf::Text points;
+    sf::Text health;
+    sf::Font font;
+
+    GameScreen()
+    {
+        floor.setSize({600,15});
+        floor.setPosition(0, 800-15);
+        championTexture.loadFromFile("bee.png");
+        championSprite.setTexture(championTexture);
+        wallTexture.loadFromFile("wall.png");
+
+        font.loadFromFile("comic.ttf");
+        points.setFont(font);
+        points.setCharacterSize(30);
+        points.setString(to_string(point));
+        points.setPosition(5, 5);
+
+        health.setFont(font);
+        health.setCharacterSize(30);
+        health.setString(to_string(championSprite.health));
+        health.setPosition(550, 5);
+
+
+        for(int i = 0; i < 5; i++){
+            Platforma temp;
+            temp.setTexture(&wallTexture);
+            //temp.setScale(0.33,0.33);
+            temp.setPosition(100 + 65 * i, 500);
+            wall.emplace_back(temp);
+
+
+        }
+        textureBackground.loadFromFile("back_day.png");
+        backgroungSprite.setTexture(textureBackground);
+        championSprite.setTexture(championTexture);
+        backgroungSprite.setScale(1,1);
+
+        for(int i = 0; i < 5; i++)
+        {
+            wall[i].setPosition(wall[i].getPosition().x,600-150*i);
+        }
+    }
+
+    void gameStuff()
+    {
+        if(championSprite.ground ==false){
+            championSprite.x = championSprite.x + 0.1;
+            championSprite.move(0,championSprite.x);
+        }
+
+
+        if (championSprite.ground == true)
+        {
+            for (int i = 0; i < 5; i++) if (wall[i].getGlobalBounds().intersects(championSprite.getGlobalBounds()) && (championSprite.getPosition().x + championSprite.getGlobalBounds().width/2 < wall[i].getPosition().x || championSprite.getPosition().x + championSprite.getGlobalBounds().width/2 > wall[i].getPosition().x + wall[i].getGlobalBounds().width))
+            {
+                championSprite.ground = false;
+            }
+
+        }
+
+        if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left) && sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right)){
+            championSprite.move(0,0);
+
+        }
+        else if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Left)){
+            championSprite.move(-3,0);
+        }
+        else if(sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Right)){
+            championSprite.move(3,0);
+        }
+        //
+        if(championSprite.getPosition().x+championSprite.getGlobalBounds().width > 800){
+            championSprite.move(-3,0);
+        }
+        if(championSprite.getPosition().x < 0){
+            championSprite.move(3,0);
+        }
+//        if(championSprite.getPosition().y+championSprite.getGlobalBounds().height > 800){
+//            championSprite.move(0,-3);
+//            championSprite.ground = true;
+//            championSprite.x = 0;
+//        }
+//        if(championSprite.getPosition().y < 0){
+//            championSprite.move(0,3);
+
+//        }
+    }
+
+    void moveScreen(Character &character)
+    {
+        if ((character.getPosition().y < 400 && character.x < 0) || character.getPosition().y-50 < 0)
+        {
+            point +=1;
+            points.setString(to_string(point));
+            for(int i = 0; i < 5; i++)
+            {
+                wall[i].move(0,15);
+            }
+        }
+        else if(character.getPosition().y < 100 && character.x >= 0 && character.getPosition().y > 50)
+        {
+            for(int i = 0; i < 5; i++)
+            {
+                wall[i].move(0,-character.x);
+            }
+        }
+        for(int i = 0; i < 5; i++) wall[i].respawn();
+    }
+    void drawScreen(sf::RenderWindow &window)
+    {
+        window.draw(backgroungSprite);
+        window.draw(championSprite);
+        for(int i = 0; i < 5; i++)
+        {
+            window.draw(wall[i]);
+        }
+        window.draw(floor);
+        window.draw(championSprite);
+        window.draw(health);
+        window.draw(points);
+    }
+
+};
+
+class EndScreen : public Screen
+{
+public:
+    sf::Font font;
+    sf::Text points;
+    sf::Text next;
+
+    EndScreen()
+    {
+        font.loadFromFile("comic.ttf");
+        points.setFont(font);
+        points.setCharacterSize(30);
+        points.setString("Points: 0");
+        points.setPosition(200, 300);
+
+        next.setFont(font);
+        next.setCharacterSize(30);
+        next.setString("Click to continue...");
+        next.setPosition(200, 400);
+
+    }
+    void drawScreen(sf::RenderWindow &window)
+    {
+        window.draw(points);
+        window.draw(next);
+    }
+};
+
+int main()
+{
+    std::vector<std::string> back = {"back_day.png","back_night.png"};
+    srand(time(0));
+    sf::Clock time;
+
+    MainMenu menu;
+    GameScreen game;
+    EndScreen end;
+    menu.active = true;
+
+    sf::RenderWindow window(sf::VideoMode(600, 800), "My window");
+    window.setFramerateLimit(60);
+
+
+    while (window.isOpen())
+    {
+        sf::Event event;
+        while (window.pollEvent(event))
+        {
+            if (event.type == sf::Event::Closed)
+            {
+                window.close();
+            }
+            if(event.type==sf::Event::KeyPressed && sf::Keyboard::isKeyPressed(sf::Keyboard::Up))
+            {
+                if(game.championSprite.ground == true)
+                {
+                    game.championSprite.x = -8.0;
+                    game.championSprite.ground = false;
+                    game.floor.setPosition(700, 800-15);
+                }
+            }
+
+            if(menu.active)
+            {
+                if(event.type == sf::Event::MouseButtonPressed && menu.button1.getGlobalBounds().contains(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y))
+                {
+                    game.active = true;
+                    menu.active = false;
+                }
+                if(event.type == sf::Event::MouseButtonPressed && menu.button2.getGlobalBounds().contains(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y))
+                {
+                    window.close();
+                }
+            }
+            else if(game.active)
+            {
+
+
+            }
+            else if(end.active)
+            {
+                if (event.type == sf::Event::MouseButtonPressed)
+                {
+                    end.active = false;
+                    menu.active = true;
+                }
+            }
+        }
+
+
+        if (game.active)
+        {
+            if (game.championSprite.health <= 0)
+            {
+                game.active = false;
+                end.active = true;
+                game.championSprite.health = 3;
+                game.floor.setPosition(0, 800-15);
+                game.health.setString("3");
+                game.points.setString("0");
+                end.points.setString("Points: " + to_string(game.point));
+            }
+            if (game.championSprite.getPosition().y > 800)
+            {
+                game.floor.setPosition(0, 800-15);
+                game.championSprite.health--;
+                game.championSprite.setPosition(200, 600);
+                game.championSprite.x = 0;
+                game.health.setString(to_string(game.championSprite.health));
+            }
+            game.gameStuff();
+            game.moveScreen(game.championSprite);
+            for(int i = 0; i < 5; i++)
+            {
+                game.wall[i].intersectWithWall(game.championSprite);
+                game.wall[i].moveWall();
+            }
+            game.floor.intersectWithWall(game.championSprite);
+        }
+
+
+
+//              else if(championSprite.getPosition().y>wall[i].getPosition().y){
+//                  championSprite.move(0,0);
+//                  x = 0;
+//              }
+//              if((championSprite.getPosition().y<wall[i].getPosition().y && ground == true) && !(wall[i].getGlobalBounds().intersects(championSprite.getGlobalBounds()))){
+//                      ground = false;
+//          }
+
+
+      window.clear(sf::Color::Black);
+      if (menu.active) menu.drawScreen(window);
+      else if(game.active) game.drawScreen(window);
+      else if(end.active) end.drawScreen(window);
+
+      window.display();
+     }
+
+    return 0;
+}
